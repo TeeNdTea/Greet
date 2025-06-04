@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>GREET</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: black;
+      height: 100%;
+      width: 100%;
+    }
+    canvas {
+      display: block;
+      background: black;
+    }
+  </style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+// Full screen setup
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener("resize", resize);
+
+const w = () => canvas.width;
+const h = () => canvas.height;
+
+// Sparkles setup
+const sparklesCount = 150;
+let sparkles = [];
+function initSparkles() {
+  sparkles = [];
+  for (let i = 0; i < sparklesCount; i++) {
+    sparkles.push({
+      x: Math.random() * w(),
+      y: Math.random() * h(),
+      radius: Math.random() * 1.2 + 0.5,
+      alpha: Math.random(),
+      alphaDir: Math.random() > 0.5 ? 0.01 : -0.01,
+    });
+  }
+}
+initSparkles();
+
+// Ghost object
+let ghost = {
+  x: w() / 2,
+  y: h() / 2,
+  vx: (Math.random() * 2 + 1) * (Math.random() < 0.5 ? -1 : 1),
+  vy: (Math.random() * 2 + 1) * (Math.random() < 0.5 ? -1 : 1),
+  floatOffset: 0,
+};
+
+// Message texts and timing
+const messages = [
+  "Hi! Welcome!",
+  "I'm Greet!",
+  "I live in Tee's Profile",
+];
+let messageIndex = 0;
+let messageOpacity = 0;
+let messageTimer = 0;
+const messageDuration = 5000;  // 6 seconds per message
+const fadeDuration = 3000;     // 1 second fade in/out
+
+function drawSparkles() {
+  sparkles.forEach(s => {
+    s.alpha += s.alphaDir;
+    if (s.alpha <= 0) {
+      s.alpha = 0;
+      s.alphaDir *= -1;
+    }
+    if (s.alpha >= 1) {
+      s.alpha = 1;
+      s.alphaDir *= -1;
+    }
+    ctx.fillStyle = `rgba(255,255,255,${s.alpha.toFixed(2)})`;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function drawGhost(x, y, time) {
+  ghost.floatOffset = Math.sin(time / 500) * 8;
+
+  ctx.beginPath();
+  ctx.fillStyle = "white";
+  ctx.moveTo(x - 30, y + ghost.floatOffset);
+  ctx.quadraticCurveTo(x, y - 40 + ghost.floatOffset, x + 30, y + ghost.floatOffset);
+  ctx.lineTo(x + 30, y + 40 + ghost.floatOffset);
+
+  for (let i = 0; i < 6; i++) {
+    let wave = Math.sin(time / 200 + i) * 5;
+    ctx.quadraticCurveTo(
+      x + 30 - i * 10 + wave,
+      y + 45 + ghost.floatOffset,
+      x + 25 - i * 10,
+      y + 40 + ghost.floatOffset
+    );
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  // Eyes
+  ctx.fillStyle = "black";
+  ctx.beginPath();
+  ctx.arc(x - 10, y - 10 + ghost.floatOffset, 4, 0, Math.PI * 2);
+  ctx.arc(x + 10, y - 10 + ghost.floatOffset, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Blush
+  ctx.fillStyle = "pink";
+  ctx.beginPath();
+  ctx.arc(x - 17, y - 5 + ghost.floatOffset, 3, 0, Math.PI * 2);
+  ctx.arc(x + 17, y - 5 + ghost.floatOffset, 3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawMessage(x, y, opacity) {
+  ctx.fillStyle = `rgba(255,255,255,${opacity.toFixed(2)})`;
+  ctx.font = "28px Comic Sans MS, cursive";
+  ctx.textAlign = "center";
+  ctx.fillText(messages[messageIndex], x, y - 80);
+}
+
+function animate(t) {
+  ctx.clearRect(0, 0, w(), h());
+
+  drawSparkles();
+
+  // Move ghost
+  ghost.x += ghost.vx;
+  ghost.y += ghost.vy;
+
+  // Bounce off edges with margin to avoid clipping
+  const margin = 60;
+  if (ghost.x < margin) {
+    ghost.x = margin;
+    ghost.vx *= -1;
+  }
+  if (ghost.x > w() - margin) {
+    ghost.x = w() - margin;
+    ghost.vx *= -1;
+  }
+  if (ghost.y < margin) {
+    ghost.y = margin;
+    ghost.vy *= -1;
+  }
+  if (ghost.y > h() - margin) {
+    ghost.y = h() - margin;
+    ghost.vy *= -1;
+  }
+
+  drawGhost(ghost.x, ghost.y, t);
+
+  // Manage message opacity and switching
+  messageTimer += 16; 
+
+  const cycleTime = messageDuration + fadeDuration * 2;
+
+  let timeInCycle = messageTimer % cycleTime;
+
+  if (timeInCycle < fadeDuration) {
+    // Fade in
+    messageOpacity = timeInCycle / fadeDuration;
+  } else if (timeInCycle < fadeDuration + messageDuration) {
+    // Fully visible
+    messageOpacity = 1;
+  } else {
+    // Fade out
+    messageOpacity = 1 - (timeInCycle - fadeDuration - messageDuration) / fadeDuration;
+  }
+  if (messageTimer >= cycleTime) {
+    messageTimer = messageTimer % cycleTime;
+    messageIndex = (messageIndex + 1) % messages.length;
+  }
+
+  drawMessage(ghost.x, ghost.y + ghost.floatOffset, messageOpacity);
+
+  requestAnimationFrame(animate);
+}
+
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
